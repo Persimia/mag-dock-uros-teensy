@@ -100,7 +100,12 @@ void timerCallback() {
     myTimer.end();
     timerRunning = false;  
     // Read the state of the switch
-    switchState = digitalRead(SWITCH_PIN);    
+    switchState = digitalRead(SWITCH_PIN); 
+    if (switchState) {
+      RCSOFTCHECK(rcl_publish(&state_publisher, &attach_msg, NULL));
+    } else {
+      RCSOFTCHECK(rcl_publish(&state_publisher, &detach_msg, NULL));
+    }  
 }
 
 void setup() {
