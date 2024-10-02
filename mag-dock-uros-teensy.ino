@@ -36,6 +36,10 @@ unsigned long lastDebounceTime = 0; // Timestamp of the last switch state change
 volatile bool timerRunning = false;         // Flag to indicate if the timer is running
 elapsedMillis sinceLastLoop;
 
+#define PWM_OUT_PIN 3
+#define PWM_MAX 255
+#define PWM_MIN 0
+
 
 void error_loop(){
   while(1){
@@ -47,13 +51,15 @@ void error_loop(){
 void attach_subscription_callback(const void * msgin)
 { 
   RCLC_UNUSED(msgin);
-  digitalWrite(LED_BUILTIN, HIGH);  
+  digitalWrite(LED_BUILTIN, HIGH); 
+  analogWrite(PWM_OUT_PIN, PWM_MAX);
 }
 
 void detach_subscription_callback(const void * msgin)
 { 
   RCLC_UNUSED(msgin);
   digitalWrite(LED_BUILTIN, LOW);  
+  analogWrite(PWM_OUT_PIN, PWM_MIN);
 }
 
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
@@ -98,12 +104,17 @@ void timerCallback() {
 }
 
 void setup() {
+  //Setup switch input pin
   pinMode(SWITCH_PIN, INPUT_PULLUP);     // Set the switch pin as input with internal pull-up resistor
   attachInterrupt(digitalPinToInterrupt(SWITCH_PIN), startTimer, CHANGE);
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH); 
 
-  set_microros_transports();
+  // set LED outputs
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW); 
+
+  //set PWM Outputs
+  pinMode(PWM_OUT_PIN, OUTPUT);
+  analogWrite(PWM_OUT_PIN, PWM_MIN);
 
   // Initialize attach message
   attach_msg.data.data = (char *)malloc(10); // Allocate memory for the message
@@ -115,7 +126,8 @@ void setup() {
   detach_msg.data.size = strlen("attached");
   detach_msg.data.capacity = 10; // Set capacity to avoid memory issues
   strcpy(detach_msg.data.data, "detached");
-  
+
+  set_microros_transports();
   delay(2000);
 
   allocator = rcl_get_default_allocator();
@@ -163,8 +175,10 @@ void setup() {
 }
 
 void loop() {
-  if (sinceLastLoop > 100) {
-    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
-    sinceLastLoop = 0;
-  }
+
+  RCCHECK(rclc_executor_spin(&executor))
+  // if (sinceLastLoop > 100) {
+  //   RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
+  //   sinceLastLoop = 0;
+  // }
 }
